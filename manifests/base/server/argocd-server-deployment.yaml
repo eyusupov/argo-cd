@@ -172,11 +172,13 @@ spec:
         - name: tls-certs
           mountPath: /app/config/tls
         - name: argocd-repo-server-tls
-          mountPath: /app/config/server/tls
-        - mountPath: /home/argocd
-          name: plugins-home
-        - mountPath: /tmp
-          name: tmp
+          mountPath: /app/config/repo-server/tls
+        - name: argocd-repo-server-client-tls
+          mountPath: /app/config/repo-server-client/tls
+        - name: plugins-home
+          mountPath: /home/argocd
+        - name: tmp
+          mountPath: /tmp
         ports:
         - containerPort: 8080
         - containerPort: 8083
@@ -223,6 +225,15 @@ spec:
             path: tls.key
           - key: ca.crt
             path: ca.crt
+      - name: argocd-repo-server-client-tls
+        secret:
+          secretName: argocd-repo-server-client-tls
+          optional: true
+          items:
+          - key: tls.crt
+            path: tls.crt
+          - key: tls.key
+            path: tls.key
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

@@ -3,6 +3,8 @@ package apiclient
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
+	"os"
 	"time"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -12,7 +14,11 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	argogrpc "github.com/argoproj/argo-cd/v2/util/grpc"
+	"github.com/argoproj/argo-cd/v2/common"
+	"github.com/argoproj/argo-cd/v2/util/env"
 	"github.com/argoproj/argo-cd/v2/util/io"
+	argotls "github.com/argoproj/argo-cd/v2/util/tls"
+	"fmt"
 )
 
 const (
@@ -28,6 +34,7 @@ type TLSConfiguration struct {
 	StrictValidation bool
 	// List of certificates to validate the peer against (if StrictCerts is true)
 	Certificates *x509.CertPool
+	ClientCertificates []tls.Certificate
 }
 
 // Clientset represents repository server api clients
@@ -39,6 +46,58 @@ type clientSet struct {
 	address        string
 	timeoutSeconds int
 	tlsConfig      TLSConfiguration
+}
+
+func NewTLSConfiguration(repoServerPlaintext bool, repoServerStrictTLS bool) (TLSConfiguration, error) {
+	tlsConfig := TLSConfiguration{
+		DisableTLS:       repoServerPlaintext,
+		StrictValidation: repoServerStrictTLS,
+	}
+	// Load CA information to use for validating connections to the
+	// repository server, if strict TLS validation was requested.
+	if !repoServerPlaintext && repoServerStrictTLS {
+		pool, err := argotls.LoadX509CertPool(
+			fmt.Sprintf("%s/repo-server/tls/tls.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath)),
+			fmt.Sprintf("%s/repo-server/tls/ca.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath)),
+		)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+		tlsConfig.Certificates = pool
+
+		clientCertPath := fmt.Sprintf("%s/repo-server-client/tls/tls.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
+		clientKeyPath := fmt.Sprintf("%s/repo-server-client/tls/tls.key", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
+
+		tlsCertExists := false
+		tlsKeyExists := false
+
+		_, err = os.Stat(clientCertPath)
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				log.Warnf("could not read TLS cert from %s: %v", clientCertPath, err)
+			}
+		} else {
+			tlsCertExists = true
+		}
+
+		_, err = os.Stat(clientKeyPath)
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				log.Warnf("could not read TLS key from %s: %v", clientKeyPath, err)
+			}
+		} else {
+			tlsKeyExists = true
+		}
+
+		if tlsKeyExists && tlsCertExists {
+			certificate, err := tls.LoadX509KeyPair(clientCertPath, clientKeyPath)
+			if err != nil {
+				return TLSConfiguration{}, fmt.Errorf("Unable to initalize repo server client gRPC TLS configuration with client cert=%s and key=%s: %v", clientCertPath, clientKeyPath, err)
+			}
+			tlsConfig.ClientCertificates = []tls.Certificate{certificate}
+		}
+	}
+	return tlsConfig, nil
 }
 
 func (c *clientSet) NewRepoServerClient() (io.Closer, RepoServerServiceClient, error) {
@@ -73,7 +132,11 @@ func NewConnection(address string, timeoutSeconds int, tlsConfig *TLSConfigurati
 		}
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsC)))
 	} else {
-		opts = append(opts, grpc.WithInsecure())
+		if len(tlsConfig.ClientCertificates) == 0 {
+			opts = append(opts, grpc.WithInsecure())
+		} else {
+			tlsC.Certificates = tlsConfig.ClientCertificates
+		}
 	}
 
 	conn, err := grpc.Dial(address, opts...)

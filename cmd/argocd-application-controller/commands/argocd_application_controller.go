@@ -2,7 +2,6 @@ package commands
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"time"
 
@@ -27,7 +26,6 @@ import (
 	"github.com/argoproj/argo-cd/v2/util/errors"
 	kubeutil "github.com/argoproj/argo-cd/v2/util/kube"
 	"github.com/argoproj/argo-cd/v2/util/settings"
-	"github.com/argoproj/argo-cd/v2/util/tls"
 )
 
 const (
@@ -83,24 +81,8 @@ func NewCommand() *cobra.Command {
 				resyncDuration = time.Duration(appResyncPeriod) * time.Second
 			}
 
-			tlsConfig := apiclient.TLSConfiguration{
-				DisableTLS:       repoServerPlaintext,
-				StrictValidation: repoServerStrictTLS,
-			}
-
-			// Load CA information to use for validating connections to the
-			// repository server, if strict TLS validation was requested.
-			if !repoServerPlaintext && repoServerStrictTLS {
-				pool, err := tls.LoadX509CertPool(
-					fmt.Sprintf("%s/controller/tls/tls.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath)),
-					fmt.Sprintf("%s/controller/tls/ca.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath)),
-				)
-				if err != nil {
-					log.Fatalf("%v", err)
-				}
-				tlsConfig.Certificates = pool
-			}
-
+			tlsConfig, err := apiclient.NewTLSConfiguration(repoServerPlaintext, repoServerStrictTLS)
+			errors.CheckError(err)
 			repoClientset := apiclient.NewRepoServerClientset(repoServerAddress, repoServerTimeoutSeconds, tlsConfig)
 
 			ctx, cancel := context.WithCancel(context.Background())

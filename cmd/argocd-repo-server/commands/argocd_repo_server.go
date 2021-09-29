@@ -109,6 +109,7 @@ func NewCommand() *cobra.Command {
 					// connect to itself to make sure repo server is able to serve connection
 					// used by liveness probe to auto restart repo server
 					// see https://github.com/argoproj/argo-cd/issues/5110 for more information
+					// TODO: check this
 					conn, err := apiclient.NewConnection(fmt.Sprintf("localhost:%d", listenPort), 60, &apiclient.TLSConfiguration{DisableTLS: disableTLS})
 					if err != nil {
 						return err

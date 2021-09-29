@@ -366,7 +366,7 @@ func LoadX509CertPool(paths ...string) (*x509.CertPool, error) {
 // if these are not given, will generate a self-signed certificate valid for
 // the specified list of hosts. If hosts is nil or empty, self-signed cert
 // creation will be disabled.
-func CreateServerTLSConfig(tlsCertPath, tlsKeyPath string, hosts []string) (*tls.Config, error) {
+func CreateServerTLSConfig(tlsCertPath, tlsKeyPath string, tlsClientCAPath string, hosts []string) (*tls.Config, error) {
 	var cert *tls.Certificate
 	var err error
 
@@ -394,6 +394,14 @@ func CreateServerTLSConfig(tlsCertPath, tlsKeyPath string, hosts []string) (*tls
 		}
 	}
 
+	var tlsClientCA *x509.CertPool
+	if tlsClientCAPath != "" {
+	  tlsClientCA, err = LoadX509CertPool(tlsClientCAPath)
+	  if err != nil {
+	    return nil, err
+	  }
+	}
+
 	if !tlsCertExists || !tlsKeyExists {
 		log.Infof("Generating self-signed gRPC TLS certificate for this session")
 		c, err := GenerateX509KeyPair(CertOptions{
@@ -414,6 +422,5 @@ func CreateServerTLSConfig(tlsCertPath, tlsKeyPath string, hosts []string) (*tls
 		cert = &c
 	}
 
-	return &tls.Config{Certificates: []tls.Certificate{*cert}}, nil
-
+	return &tls.Config{Certificates: []tls.Certificate{*cert}, ClientCAs: tlsClientCA}, nil
 }

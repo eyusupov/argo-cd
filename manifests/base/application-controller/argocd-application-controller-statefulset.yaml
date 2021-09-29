@@ -138,7 +138,9 @@ spec:
         workingDir: /home/argocd
         volumeMounts:
         - name: argocd-repo-server-tls
-          mountPath: /app/config/controller/tls
+          mountPath: /app/config/repo-server/tls
+        - name: argocd-repo-server-client-tls
+          mountPath: /app/config/repo-server-client/tls
         - name: argocd-home
           mountPath: /home/argocd
       serviceAccountName: argocd-application-controller
@@ -167,7 +169,14 @@ spec:
           items:
           - key: tls.crt
             path: tls.crt
-          - key: tls.key
-            path: tls.key
           - key: ca.crt
             path: ca.crt
+      - name: argocd-repo-server-client-tls
+        secret:
+          secretName: argocd-repo-server-client-tls
+          optional: true
+          items:
+          - key: tls.crt
+            path: tls.crt
+          - key: tls.key
+            path: tls.key
