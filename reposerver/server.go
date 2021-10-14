@@ -49,7 +49,7 @@ func NewServer(metricsServer *metrics.MetricsServer, cache *reposervercache.Cach
 		var err error
 		certPath := fmt.Sprintf("%s/reposerver/tls/tls.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
 		keyPath := fmt.Sprintf("%s/reposerver/tls/tls.key", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
-		clientCAPath := fmt.Sprintf("%s/client/tls/ca.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
+		clientCAPath := fmt.Sprintf("%s/reposerver-client/tls/ca.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
 		tlsConfig, err = tlsutil.CreateServerTLSConfig(certPath, keyPath, clientCAPath, tlsHostList)
 		if err != nil {
 			return nil, err

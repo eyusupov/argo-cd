@@ -55,23 +55,25 @@ func NewTLSConfiguration(repoServerPlaintext bool, repoServerStrictTLS bool) (TL
 	}
 	// Load CA information to use for validating connections to the
 	// repository server, if strict TLS validation was requested.
-	if !repoServerPlaintext && repoServerStrictTLS {
-		pool, err := argotls.LoadX509CertPool(
-			fmt.Sprintf("%s/repo-server/tls/tls.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath)),
-			fmt.Sprintf("%s/repo-server/tls/ca.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath)),
-		)
-		if err != nil {
-			log.Fatalf("%v", err)
+	if !repoServerPlaintext {
+		if repoServerStrictTLS {
+			pool, err := argotls.LoadX509CertPool(
+				fmt.Sprintf("%s/reposerver/tls/tls.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath)),
+				fmt.Sprintf("%s/reposerver/tls/ca.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath)),
+			)
+			if err != nil {
+				log.Fatalf("%v", err)
+			}
+			tlsConfig.Certificates = pool
 		}
-		tlsConfig.Certificates = pool
 
-		clientCertPath := fmt.Sprintf("%s/repo-server-client/tls/tls.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
-		clientKeyPath := fmt.Sprintf("%s/repo-server-client/tls/tls.key", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
+		clientCertPath := fmt.Sprintf("%s/reposerver-client/tls/tls.crt", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
+		clientKeyPath := fmt.Sprintf("%s/reposerver-client/tls/tls.key", env.StringFromEnv(common.EnvAppConfigPath, common.DefaultAppConfigPath))
 
 		tlsCertExists := false
 		tlsKeyExists := false
 
-		_, err = os.Stat(clientCertPath)
+		_, err := os.Stat(clientCertPath)
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
 				log.Warnf("could not read TLS cert from %s: %v", clientCertPath, err)
