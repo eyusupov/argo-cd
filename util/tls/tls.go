@@ -395,11 +395,13 @@ func CreateServerTLSConfig(tlsCertPath, tlsKeyPath string, tlsClientCAPath strin
 	}
 
 	var tlsClientCA *x509.CertPool
+	var clientAuth tls.ClientAuthType = tls.NoClientCert
 	if tlsClientCAPath != "" {
 	  tlsClientCA, err = LoadX509CertPool(tlsClientCAPath)
 	  if err != nil {
 	    return nil, err
 	  }
+		clientAuth = tls.RequireAndVerifyClientCert
 	}
 
 	if !tlsCertExists || !tlsKeyExists {
@@ -422,5 +424,5 @@ func CreateServerTLSConfig(tlsCertPath, tlsKeyPath string, tlsClientCAPath strin
 		cert = &c
 	}
 
-	return &tls.Config{Certificates: []tls.Certificate{*cert}, ClientCAs: tlsClientCA}, nil
+	return &tls.Config{Certificates: []tls.Certificate{*cert}, ClientCAs: tlsClientCA, ClientAuth: clientAuth}, nil
 }
