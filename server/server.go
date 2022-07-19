@@ -200,6 +200,7 @@ type ArgoCDServerOpts struct {
 	XFrameOptions         string
 	ContentSecurityPolicy string
 	ListenHost            string
+	MetricsHost           string
 }
 
 // initializeDefaultProject creates the default project if it does not already exist
@@ -334,7 +335,7 @@ func (a *ArgoCDServer) Listen() (*Listeners, error) {
 	if err != nil {
 		return nil, err
 	}
-	metricsLn, err := startListener(a.ListenHost, a.MetricsPort)
+	metricsLn, err := startListener(a.MetricsHost, a.MetricsPort)
 	if err != nil {
 		io.Close(mainLn)
 		return nil, err
@@ -403,7 +404,7 @@ func (a *ArgoCDServer) Run(ctx context.Context, listeners *Listeners) {
 		httpsS.Handler = &bug21955Workaround{handler: httpsS.Handler}
 	}
 
-	metricsServ := metrics.NewMetricsServer(a.ListenHost, a.MetricsPort)
+	metricsServ := metrics.NewMetricsServer(a.MetricsHost, a.MetricsPort)
 	if a.RedisClient != nil {
 		cacheutil.CollectMetrics(a.RedisClient, metricsServ)
 	}
