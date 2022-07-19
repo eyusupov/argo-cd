@@ -189,6 +189,7 @@ type ArgoCDServerOpts struct {
 	TLSConfigCustomizer tlsutil.ConfigCustomizer
 	XFrameOptions       string
 	ListenHost          string
+	MetricsHost         string
 }
 
 // initializeDefaultProject creates the default project if it does not already exist
@@ -305,7 +306,7 @@ func (a *ArgoCDServer) Run(ctx context.Context, port int, metricsPort int) {
 		httpsS.Handler = &bug21955Workaround{handler: httpsS.Handler}
 	}
 
-	metricsServ := metrics.NewMetricsServer(a.ListenHost, metricsPort)
+	metricsServ := metrics.NewMetricsServer(a.MetricsHost, metricsPort)
 	if a.RedisClient != nil {
 		cacheutil.CollectMetrics(a.RedisClient, metricsServ)
 	}
